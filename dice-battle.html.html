@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#10172d" />
+  <title>Dice Battle | 첫 웹게임</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0c1326; --panel:#151f39; --edge:#344263; --text:#edf3ff; --muted:#adbbda; --gold:#fdd176; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,'Malgun Gothic',sans-serif; background:radial-gradient(ellipse at 50% -30%,#294476 0%,#111b32 48%,#0b1223 100%); color:var(--text); }
+    .wrap { max-width:1000px; margin:auto; padding:36px 18px 72px; }
+    header { text-align:center; margin-bottom:30px; }
+    .eyebrow { color:var(--gold); font-weight:800; letter-spacing:.18em; font-size:12px; }
+    h1 { font-size:clamp(32px,5vw,54px); margin:9px 0 8px; letter-spacing:-1px; }
+    h2 { font-size:23px; margin:0 0 12px; }
+    .muted { color:var(--muted); }
+    .lead { color:var(--muted); margin:0; line-height:1.7; }
+    .panel { background:rgba(21,31,57,.94); border:1px solid var(--edge); border-radius:22px; padding:24px; box-shadow:0 24px 70px #050a1970; }
+    #choose { max-width:830px; margin:0 auto; }
+    .choices { display:grid; grid-template-columns:repeat(3,1fr); gap:13px; margin-top:23px; }
+    .character { background:#1b2948; color:var(--text); border:1px solid #475a82; border-radius:17px; padding:22px 12px; text-align:center; cursor:pointer; transition:transform .15s,border .15s,background .15s; font:inherit; }
+    .character:hover,.character:focus-visible { transform:translateY(-3px); border-color:#f5c76c; background:#25365a; outline:none; }
+    .character .emoji { display:block; font-size:55px; margin-bottom:12px; }
+    .character .name { display:block; font-weight:800; font-size:19px; }
+    .character .info { display:block; font-size:13px; color:var(--muted); margin-top:9px; line-height:1.7; }
+    #battle { display:none; }
+    .topline { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:19px; }
+    .round { display:inline-block; color:#16213e; background:var(--gold); border-radius:10px; padding:8px 13px; font-weight:900; }
+    .arena { display:grid; grid-template-columns:1fr 95px 1fr; gap:12px; align-items:center; }
+    .fighter { background:#1b2948; border:1px solid #3b4d71; padding:20px; border-radius:17px; min-height:248px; text-align:center; }
+    .fighter .avatar { font-size:68px; margin:6px 0 15px; line-height:1.3; }
+    .fighter .class-name { font-size:21px; font-weight:800; margin-bottom:12px; }
+    .fighter .hp-header { display:flex; justify-content:space-between; font-size:14px; margin-bottom:7px; gap:8px; }
+    .hp-track { height:15px; background:#354057; border-radius:20px; overflow:hidden; }
+    .hp-fill { background:linear-gradient(90deg,#14b988,#68e6bc); height:100%; width:100%; transition:width .35s; }
+    .enemy-hp { background:linear-gradient(90deg,#e34a65,#fb8c91); }
+    .vs { font-size:24px; text-align:center; font-weight:1000; color:var(--gold); }
+    .dice-panel { min-height:100px; margin-top:20px; border:1px dashed #56688d; background:#12213b; border-radius:16px; padding:15px; text-align:center; }
+    .dice-label { color:var(--muted); font-size:13px; margin-bottom:10px; }
+    .dice { display:flex; justify-content:center; flex-wrap:wrap; gap:9px; }
+    .die { display:grid; place-items:center; background:#fff; color:#17213e; width:51px; height:51px; border-radius:10px; box-shadow:inset 0 -5px 0 #cdd4e4; font-size:36px; }
+    .rolling .die { animation:jiggle .15s infinite alternate; }
+    @keyframes jiggle { from{transform:rotate(-9deg) translateY(1px)} to{transform:rotate(9deg) translateY(-3px)} }
+    .actions { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:17px; }
+    button.action { border:0; border-radius:13px; padding:14px 23px; font:inherit; font-weight:800; cursor:pointer; color:#13213d; background:var(--gold); min-width:145px; }
+    button.action.heal { background:#80eac4; }
+    button.action.secondary { background:#334365; color:#e4edff; }
+    button.action:disabled { cursor:not-allowed; opacity:.45; }
+    .log { margin-top:19px; background:#0c172e; border:1px solid #354362; border-radius:15px; padding:16px 18px; height:170px; overflow:auto; line-height:1.75; font-size:14px; }
+    .log p { margin:0 0 5px; }
+    .log .system { color:#fddd92; }
+    .log .attack { color:#ff9eaa; }
+    .log .recover { color:#8eeac9; }
+    .status { min-height:26px; margin:14px 0 0; text-align:center; font-weight:750; }
+    .foot { text-align:center; color:#8798bf; margin-top:22px; font-size:13px; }
+    @media (max-width:620px) { .choices { grid-template-columns:1fr; } .character { display:flex; align-items:center; gap:16px; padding:13px 17px; text-align:left; } .character .emoji { font-size:39px; margin:0; } .character .info { margin-top:4px; } .arena { grid-template-columns:1fr 35px 1fr; gap:5px; } .fighter { padding:12px 8px; min-height:195px; } .fighter .avatar { font-size:43px; } .fighter .class-name { font-size:16px; } .fighter .hp-header { font-size:11px; } .vs { font-size:17px; } .panel { padding:16px; } .wrap { padding:24px 12px; } button.action { min-width:110px; padding:12px 13px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">MY FIRST WEB GAME</div>
+      <h1>🎲 Dice Battle</h1>
+      <p class="lead">주사위를 굴려 적을 물리치고, 더 높은 라운드에 도전하세요!</p>
+    </header>
+
+    <section id="choose" class="panel" aria-label="캐릭터 선택">
+      <h2>어떤 캐릭터로 시작할까요?</h2>
+      <p class="lead">전사·도적·마법사의 체력과 특별 능력이 다릅니다.</p>
+      <div class="choices">
+        <button class="character" data-class="warrior"><span class="emoji">🛡️</span><span><span class="name">전사</span><span class="info">❤️ HP 100 · 🎲 2개<br>같은 눈이면 공격 2배</span></span></button>
+        <button class="character" data-class="rogue"><span class="emoji">🥷</span><span><span class="name">도적</span><span class="info">❤️ HP 75 · 🎲 2개<br>같은 홀짝이면 연타</span></span></button>
+        <button class="character" data-class="magician"><span class="emoji">🧙</span><span><span class="name">마법사</span><span class="info">❤️ HP 50 · 🎲 3개<br>특수 조합으로 강력한 마법</span></span></button>
+      </div>
+    </section>
+
+    <section id="battle" class="panel" aria-label="전투 화면">
+      <div class="topline"><span class="round" id="round">ROUND 1</span><span class="muted" id="turn">전투를 준비하세요</span></div>
+      <div class="arena">
+        <div class="fighter">
+          <div id="player-avatar" class="avatar">🛡️</div><div id="player-name" class="class-name">전사</div>
+          <div class="hp-header"><span>내 체력</span><strong id="player-hp">100 / 100</strong></div>
+          <div class="hp-track"><div id="player-bar" class="hp-fill"></div></div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="fighter">
+          <div id="enemy-avatar" class="avatar">🥷</div><div id="enemy-name" class="class-name">도적</div>
+          <div class="hp-header"><span>적 체력</span><strong id="enemy-hp">75 / 75</strong></div>
+          <div class="hp-track"><div id="enemy-bar" class="hp-fill enemy-hp"></div></div>
+        </div>
+      </div>
+      <div id="dice-panel" class="dice-panel" aria-live="polite">
+        <div class="dice-label" id="dice-label">버튼을 누르면 주사위를 굴립니다</div>
+        <div id="dice" class="dice"><span class="die">⚀</span><span class="die">⚅</span></div>
+      </div>
+      <div class="actions">
+        <button id="attack" class="action">⚔️ 공격</button>
+        <button id="heal" class="action heal">💚 회복</button>
+        <button id="restart" class="action secondary">↻ 처음부터</button>
+      </div>
+      <p id="status" class="status" aria-live="polite">나의 차례!</p>
+      <div id="log" class="log" role="log" aria-live="polite" aria-label="전투 기록"></div>
+    </section>
+    <p class="foot">HTML + CSS + JavaScript · 설치 없이 브라우저에서 실행하는 첫 웹게임</p>
+  </main>
+  <script>
+    // Python에서 만들었던 class Character / Warrior / Rogue / Magician 개념을
+    // 웹브라우저에서 실행할 수 있도록 JavaScript로 옮긴 버전입니다.
+    const CLASSES = {
+      warrior:  {name:'전사', emoji:'🛡️', maxHp:100, diceNum:2},
+      rogue:    {name:'도적', emoji:'🥷', maxHp:75, diceNum:2},
+      magician: {name:'마법사', emoji:'🧙', maxHp:50, diceNum:3}
+    };
+    const faces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+    const $ = id => document.getElementById(id);
+    const rand = n => Math.floor(Math.random()*n);
+    const roll = n => Array.from({length:n}, () => rand(6)+1);
+    const sum = nums => nums.reduce((a,b) => a+b,0);
+    const sameParity = dice => dice.every(n => n%2 === dice[0]%2);
+    const CLASS_KEYS = Object.keys(CLASSES);
+    let player = null, enemy = null, round = 1, busy = false, session = 0;
+
+    function makeCharacter(type) { return {type, ...CLASSES[type], hp:CLASSES[type].maxHp}; }
+    function log(text, type='') {
+      const line = document.createElement('p');
+      line.className = type; line.textContent = text;
+      $('log').prepend(line);
+    }
+    function display() {
+      if (!player || !enemy) return;
+      $('round').textContent = `ROUND ${round}`;
+      for (const [prefix, character] of [['player',player],['enemy',enemy]]) {
+        $(`${prefix}-avatar`).textContent = character.emoji;
+        $(`${prefix}-name`).textContent = character.name;
+        $(`${prefix}-hp`).textContent = `${character.hp} / ${character.maxHp}`;
+        $(`${prefix}-bar`).style.width = `${Math.max(0,100*character.hp/character.maxHp)}%`;
+      }
+    }
+    function setButtons(disabled) {
+      $('attack').disabled = disabled;
+      $('heal').disabled = disabled;
+    }
+    function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    async function showRoll(dice, label, currentSession) {
+      $('dice-label').textContent = label;
+      $('dice-panel').classList.add('rolling');
+      const started = Date.now();
+      while (Date.now() - started < 420) {
+        if (currentSession !== session) return false;
+        $('dice').innerHTML = dice.map(() => `<span class="die">${faces[rand(6)]}</span>`).join('');
+        await wait(75);
+      }
+      if (currentSession !== session) return false;
+      $('dice').innerHTML = dice.map(n => `<span class="die">${faces[n-1]}</span>`).join('');
+      $('dice-panel').classList.remove('rolling');
+      return true;
+    }
+    function calculateAction(actor, target, action, dice) {
+      let amount = 0, special = '';
+      if (action === 'attack') {
+        if (actor.type === 'warrior') {
+          amount = sum(dice);
+          if (dice[0]===dice[1]) { amount*=2; special='⚡ 치명타! 공격력 2배'; }
+        } else if (actor.type === 'rogue') {
+          if (sameParity(dice)) {
+            const extra = roll(2); dice.push(...extra);
+            amount = sum(dice)*4;
+            special='💨 연타! 주사위 2개 추가, 총합 ×4';
+          } else amount = Math.max(...dice);
+        } else {
+          const sorted = [...dice].sort((a,b)=>a-b).join(',');
+          if (dice.every(n=>n===6)) { amount=1000; special='🔥 궁극의 마법!'; }
+          else if (dice.every(n=>n===1)) { actor.hp=0; special='💀 마법 역류! 자폭'; }
+          else if (sameParity(dice)) { amount=sum(dice)*2; special='✨ 중급 마법!'; }
+          else if (['1,2,3','2,3,4','4,5,6'].includes(sorted)) { amount=45; special='🌟 상급 마법!'; }
+          else amount=Math.max(...dice);
+        }
+        target.hp=Math.max(0,target.hp-amount);
+      } else {
+        if (actor.type==='warrior') amount=(dice[0]===dice[1])?50:sum(dice);
+        else if (actor.type==='rogue') amount=sameParity(dice)?20:sum(dice);
+        else if (dice.every(n=>n===dice[0])) amount=actor.maxHp;
+        else if (sameParity(dice)) amount=30;
+        else amount=sum(dice);
+        if (amount >= actor.maxHp && actor.type==='magician') special='🌟 마법사 완전 회복!';
+        actor.hp=Math.min(actor.maxHp,actor.hp+amount);
+      }
+      return {amount,special,dice};
+    }
+    async function act(actor, target, action, currentSession) {
+      const dice=roll(actor.diceNum);
+      const result=calculateAction(actor,target,action,dice);
+      if (!await showRoll(result.dice,`${actor===player?'나':'적'}의 ${action==='attack'?'공격':'회복'} 주사위`,currentSession)) return false;
+      log(`${actor.emoji} ${actor.name} ${action==='attack'?'공격':'회복'}: [${result.dice.join(', ')}] → ${action==='attack'?`${result.amount} 데미지`:`${result.amount} HP 회복 시도`}`,action==='attack'?'attack':'recover');
+      if (result.special) log(result.special,'system');
+      display();
+      return true;
+    }
+    async function playerAction(action) {
+      if (busy || !player || player.hp<=0 || enemy.hp<=0) return;
+      busy=true; setButtons(true); const mySession=session;
+      $('turn').textContent='내가 주사위를 굴리는 중';
+      $('status').textContent='🎲 주사위를 굴리는 중...';
+      if (!await act(player,enemy,action,mySession)) return;
+      if (mySession!==session) return;
+      if (player.hp<=0) { finish(false); return; }
+      if (enemy.hp<=0) { await nextRound(mySession); return; }
+      $('turn').textContent='적의 차례'; $('status').textContent='적이 행동을 선택합니다...';
+      await wait(550);
+      if (mySession!==session) return;
+      const enemyAction = rand(2)===0?'attack':'heal';
+      if (!await act(enemy,player,enemyAction,mySession)) return;
+      if (mySession!==session) return;
+      if (enemy.hp<=0) { await nextRound(mySession); return; }  // 적 마법사 자폭
+      if (player.hp<=0) { finish(false); return; }
+      busy=false; setButtons(false); $('turn').textContent='나의 차례'; $('status').textContent='공격 또는 회복을 선택하세요!';
+    }
+    async function nextRound(mySession) {
+      log(`🏆 ROUND ${round} 승리!`,'system');
+      $('status').textContent=`🎉 ${round}라운드 승리! 다음 적이 등장합니다.`;
+      $('turn').textContent='라운드 승리';
+      await wait(1100);
+      if (mySession!==session) return;
+      round+=1;
+      const recovery=Math.floor(player.maxHp/2);
+      player.hp=Math.min(player.maxHp,player.hp+recovery);
+      enemy=makeCharacter(CLASS_KEYS[rand(CLASS_KEYS.length)]);
+      display();
+      log(`▶ ROUND ${round} 시작 — 적 ${enemy.name} 등장! (라운드 보너스: 체력 +${recovery} 회복 시도)`,'system');
+      $('dice-label').textContent='공격 또는 회복을 선택하세요';
+      $('turn').textContent='나의 차례'; $('status').textContent='새 라운드! 공격 또는 회복을 선택하세요.';
+      busy=false; setButtons(false);
+    }
+    function finish(win) {
+      busy=true; setButtons(true);
+      $('turn').textContent='게임 종료';
+      $('status').textContent=win?`🏆 ${round}라운드에서 승리했습니다!`:`💀 게임 오버! ${round}라운드까지 도달했습니다.`;
+      log('↻ 처음부터 버튼으로 새 게임을 시작할 수 있습니다.','system');
+    }
+    function start(type) {
+      session+=1; busy=false; round=1;
+      player=makeCharacter(type);
+      enemy=makeCharacter(CLASS_KEYS[rand(CLASS_KEYS.length)]);
+      $('choose').style.display='none'; $('battle').style.display='block';
+      $('log').innerHTML='';
+      $('dice-label').textContent='공격 또는 회복을 선택하세요';
+      $('dice').innerHTML='<span class="die">⚀</span><span class="die">⚅</span>';
+      $('dice-panel').classList.remove('rolling');
+      $('status').textContent='나의 차례!'; $('turn').textContent='나의 차례';
+      setButtons(false); display();
+      log(`🎮 ${player.name} 선택! ROUND 1 — 적 ${enemy.name} 등장!`,'system');
+    }
+    document.querySelectorAll('[data-class]').forEach(btn=>btn.addEventListener('click',()=>start(btn.dataset.class)));
+    $('attack').addEventListener('click',()=>playerAction('attack'));
+    $('heal').addEventListener('click',()=>playerAction('heal'));
+    $('restart').addEventListener('click',()=>{
+      session+=1; busy=false; player=null; enemy=null;
+      $('battle').style.display='none'; $('choose').style.display='block';
+    });
+  </script>
+</body>
+</html>
